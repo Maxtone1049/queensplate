@@ -1,0 +1,76 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+# /build/
+/build/app/
+/build/.cxx/
+/build/.cxx/
+/build/d3d0ab1c6f6c078fb3b9b82d84e1ee60/
+/build/device_info_plus/
+/build/firebase_core/
+/build/firebase_messaging/
+/build/flutter_assets/
+/build/flutter_inappwebview_android/
+/build/flutter_keyboard_visibility/
+/build/flutter_local_notifications/
+/build/flutter_plugin_android_lifecycle/
+/build/flutter_secure_storage/
+/build/geocoding_android/
+/build/geolocator_android/
+/build/image_cropper/
+/build/image_picker_android/
+/build/local_auth_android/
+/build/native_assets/
+/build/native_hooks/
+/build/package_info_plus/
+/build/path_provider_android/
+/build/reports/
+/build/share_plus/
+/build/shared_preferences_android/
+/build/speech_to_text/
+/build/sqflite_android/
+/build/url_launcher_android/
+/build/vibration/
+/build/webview_flutter_android/
+/build/b70f9274ac3b5ec9754be8774a3c9a1c.cache.dill.track.dill
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
