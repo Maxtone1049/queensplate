@@ -33,7 +33,7 @@ class MobileOnlyScreen extends StatelessWidget {
                 SizedBox(height: 40.h),
                 TextView(
                   config: TextViewConfig(
-                    text: "Mobile Access Only",
+                    text: "Mobile Access Only\nFollow Instructions Below",
                     fontSize: 28,
                     fontWeight: FontWeight.w600,
                     color: AppColors.black,
