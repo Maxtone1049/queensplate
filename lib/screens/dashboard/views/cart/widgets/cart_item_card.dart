@@ -89,6 +89,7 @@ class CartItemCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         QuantityButton(icon: Icons.remove, onTap: decrease),
                         Container(

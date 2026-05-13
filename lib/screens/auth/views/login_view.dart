@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:queen_plate_delivery/Common/Gap.dart';
 import 'package:queen_plate_delivery/Common/TextView/Models/TextViewConfig.dart';
 import 'package:queen_plate_delivery/Common/TextView/TextView.dart';
@@ -62,6 +63,10 @@ class LoginView extends StatelessWidget with $LoginView {
                       label: 'Enter your Email',
                       controller: emailController,
                       focusNode: emailFocusNode,
+                      textStyle: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.black,
+                      ),
                       validator: FieldValidator.validateEmail(),
                     ),
                   ),
@@ -70,6 +75,10 @@ class LoginView extends StatelessWidget with $LoginView {
                     config: EditFieldConfig(
                       title: 'Password',
                       label: 'Enter your password',
+                      textStyle: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.black,
+                      ),
                       validator: FieldValidator.validatePassword(
                         passwordController,
                       ),

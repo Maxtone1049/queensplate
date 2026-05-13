@@ -16,7 +16,8 @@ class OutdoorServiceWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        var uri = 'https://wa.me/+2348167934957';
+        var uri =
+            'https://api.whatsapp.com/send/?phone=2348167934957&text=Hello+Queens+Plate%2C+I+would+like+to+inquire+about+your+catering+services.&type=phone_number&app_absent=0';
         AppHelpers.launchURL(Uri.parse(uri), mode: LaunchMode.platformDefault);
       },
       child: Container(
@@ -44,7 +45,7 @@ class OutdoorServiceWidget extends StatelessWidget {
                 children: [
                   TextView(
                     config: TextViewConfig(
-                      text: "Outdoor Catering",
+                      text: "Outdoor Catering?",
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                       color: AppColors.textColor,
@@ -54,8 +55,8 @@ class OutdoorServiceWidget extends StatelessWidget {
                   TextView(
                     config: TextViewConfig(
                       text:
-                          "Chat with us for custom catering menus and event services",
-                      fontWeight: FontWeight.w400,
+                          "Click to Chat with us for custom catering & event services",
+                      fontWeight: FontWeight.w800,
                       fontSize: 13,
                       color: AppColors.text,
                     ),

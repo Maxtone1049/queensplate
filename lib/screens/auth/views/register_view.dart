@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:queen_plate_delivery/Common/Gap.dart';
 import 'package:queen_plate_delivery/Common/Image/ImageView.dart';
 import 'package:queen_plate_delivery/Common/Image/Model/ImageConfig.dart';
@@ -82,8 +83,16 @@ class RegisterView extends StatelessWidget with $RegisterView {
                       title: 'Full Name',
                       label: 'John Doe',
                       controller: fullnameController,
+                      labelStyle: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.black,
+                      ),
                       focusNode: fullnameFocusNode,
                       validator: FieldValidator.validateName(),
+                      textStyle: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.black,
+                      ),
                     ),
                   ),
                   Gap(height: 16),
@@ -92,6 +101,14 @@ class RegisterView extends StatelessWidget with $RegisterView {
                       title: 'Email',
                       label: 'testmail@mail.com',
                       controller: emailController,
+                      labelStyle: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.black,
+                      ),
+                      textStyle: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.black,
+                      ),
                       focusNode: emailFocusNode,
                       validator: FieldValidator.validateEmail(),
                     ),
@@ -103,8 +120,16 @@ class RegisterView extends StatelessWidget with $RegisterView {
                       label: 'Enter your password',
                       validator: FieldValidator.validatePass(),
                       controller: passwordController,
+                      labelStyle: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.black,
+                      ),
                       focusNode: passwordFocusNode,
                       obscureText: model.passwordVisibility,
+                      textStyle: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.black,
+                      ),
                       suffixIconWidget: InkWell(
                         onTap: () => model.togglePasswordVisibility(),
                         child: Icon(
@@ -120,6 +145,14 @@ class RegisterView extends StatelessWidget with $RegisterView {
                   EditFormField(
                     config: EditFieldConfig(
                       title: 'Confirm Password',
+                      textStyle: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.black,
+                      ),
+                      labelStyle: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.black,
+                      ),
                       label: 'Enter your password again',
                       validator: FieldValidator.validatePassword(
                         passwordController,

@@ -17,7 +17,6 @@ import 'package:queen_plate_delivery/screens/dashboard/view_model/cart_view_mode
 import 'package:queen_plate_delivery/screens/dashboard/views/home/background_skin/background_skin.dart';
 import 'package:queen_plate_delivery/screens/dashboard/views/home/widgets/out_door_service.dart';
 import 'package:queen_plate_delivery/screens/dashboard/views/home/widgets/quantity_button.dart';
-import 'package:queen_plate_delivery/screens/dashboard/views/order/widgets/shimmer_loader.dart';
 import 'package:stacked/stacked.dart';
 
 class FoodMenuDetailView extends StatelessWidget {
@@ -50,6 +49,14 @@ class FoodMenuDetailView extends StatelessWidget {
         });
       },
       builder: (context, model, child) {
+        String _getCurrentQuantity(CartViewModel model) {
+          final cartQty = model.menuDetail?.data?.cartDetails?.quantity;
+          if (cartQty != null && cartQty.isNotEmpty) {
+            return cartQty;
+          }
+          return model.quantity.toString();
+        }
+
         return Scaffold(
           // backgroundColor: AppColors.yellow50,
           body: SafeArea(
@@ -214,6 +221,9 @@ class FoodMenuDetailView extends StatelessWidget {
                                     ),
 
                                     Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                      ),
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(30),
                                         color: AppColors.yellow100,
@@ -222,47 +232,62 @@ class FoodMenuDetailView extends StatelessWidget {
                                         children: [
                                           QuantityButton(
                                             icon: Icons.remove,
-                                            onTap: () => model.detailDecrease(
-                                              model
+                                            onTap: () {
+                                              final cartItemId =
+                                                  model
                                                       .menuDetail
                                                       ?.data
                                                       ?.cartDetails
                                                       ?.id
                                                       ?.toString() ??
-                                                  '',
-                                              model.menuDetail?.data?.id
+                                                  '';
+                                              final foodId =
+                                                  model.menuDetail?.data?.id
                                                       ?.toString() ??
-                                                  '',
-                                            ),
+                                                  'foodId'; // fallback
+
+                                              model.detailDecrease(
+                                                cartItemId,
+                                                foodId,
+                                              );
+                                            },
                                           ),
+
                                           Container(
                                             width: 40,
                                             alignment: Alignment.center,
                                             child: TextView(
                                               config: TextViewConfig(
-                                                text:
-                                                    (model
-                                                            .menuDetail
-                                                            ?.data
-                                                            ?.cartDetails !=
-                                                        null)
-                                                    ? (model
-                                                              .menuDetail!
-                                                              .data!
-                                                              .cartDetails!
-                                                              .quantity
-                                                              ?.toString() ??
-                                                          '0')
-                                                    : model.quantity.toString(),
+                                                text: _getCurrentQuantity(
+                                                  model,
+                                                ), // Use helper
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
                                           ),
+
                                           QuantityButton(
                                             icon: Icons.add,
-                                            onTap: () =>
-                                                model.detailIncrease("", ''),
+                                            onTap: () {
+                                              final cartItemId =
+                                                  model
+                                                      .menuDetail
+                                                      ?.data
+                                                      ?.cartDetails
+                                                      ?.id
+                                                      ?.toString() ??
+                                                  '';
+                                              final foodId =
+                                                  model.menuDetail?.data?.id
+                                                      ?.toString() ??
+                                                  "foodId";
+
+                                              model.detailIncrease(
+                                                cartItemId,
+                                                foodId,
+                                              );
+                                            },
                                           ),
                                         ],
                                       ),
@@ -286,6 +311,7 @@ class FoodMenuDetailView extends StatelessWidget {
                                         //   ),
                                         // );
                                         model.addToCart(
+                                          context: context,
                                           foodName: foodName,
                                           price: price,
                                           quantity: model.quantity,

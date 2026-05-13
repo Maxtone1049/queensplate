@@ -68,10 +68,7 @@ class AuthViewModel extends BaseViewModel {
     } catch (e) {
       _isLoading = false;
       logger.d(e.toString());
-      AppUiComponents.triggerNotification(
-        "Registration Failed, Kindly Try again",
-        error: false,
-      );
+      AppUiComponents.triggerNotification(e.toString(), error: false);
     }
   }
 

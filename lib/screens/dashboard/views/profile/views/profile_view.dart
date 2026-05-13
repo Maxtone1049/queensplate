@@ -119,7 +119,7 @@ class ProfileView extends StatelessWidget {
 
                         // Edit Button
                         GestureDetector(
-                          onTap: () => model.editProfile(),
+                          onTap: () => {},
                           child: ImageView(
                             imageConfig: ImageConfig(
                               imageURL: AppImage.edit,

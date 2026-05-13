@@ -1,8 +1,17 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:queen_plate_delivery/assets/app_colors.dart';
 import 'package:queen_plate_delivery/common/AppUtils/app_ui_components.dart';
+import 'package:queen_plate_delivery/common/Button/ButtonWidget.dart';
+import 'package:queen_plate_delivery/common/Button/Model/ButtonConfig.dart';
+import 'package:queen_plate_delivery/common/Gap.dart';
+import 'package:queen_plate_delivery/common/TextView/Models/TextViewConfig.dart';
+import 'package:queen_plate_delivery/common/TextView/TextView.dart';
 import 'package:queen_plate_delivery/core/main_core/app.locator.dart';
 import 'package:queen_plate_delivery/core/main_core/app.logger.dart';
 import 'package:queen_plate_delivery/core/main_core/app.router.dart';
 import 'package:queen_plate_delivery/core/router/page_router.dart';
+import 'package:queen_plate_delivery/screens/auth/model/get_user_res_model.dart';
 import 'package:queen_plate_delivery/screens/dashboard/models/add_cart_model.dart';
 import 'package:queen_plate_delivery/screens/dashboard/models/add_cart_res_model.dart';
 import 'package:queen_plate_delivery/screens/dashboard/models/checkout_model.dart';
@@ -14,13 +23,24 @@ import 'package:queen_plate_delivery/screens/dashboard/models/order_history_res_
 import 'package:queen_plate_delivery/screens/dashboard/models/update_quantity_model.dart';
 import 'package:queen_plate_delivery/screens/dashboard/models/update_quantity_res_model.dart';
 import 'package:queen_plate_delivery/screens/dashboard/repo/general_repo_impl.dart';
+import 'package:queen_plate_delivery/screens/dashboard/view_model/dashboard_view_model.dart';
 import 'package:queen_plate_delivery/screens/dashboard/view_model/profile_view_model.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+
+DateTime? _lastMenuFetchTime;
 
 class CartViewModel extends ProfileViewModel {
   CartViewModel();
   String? _customDeliveryAddress;
   String? get customDeliveryAddress => _customDeliveryAddress;
+  final _profileViewModel = locator<ProfileViewModel>();
+
+  bool get isProfileReadyForCheckout =>
+      _profileViewModel.isProfileCompleteForCheckout;
+  String? get profileCompletionMessage => _profileViewModel.missingProfileInfo;
+
+  @override
+  List<AddressModel> get addresses => _profileViewModel.addresses;
 
   void setDeliveryAddress(String address) {
     _customDeliveryAddress = address;
@@ -29,29 +49,35 @@ class CartViewModel extends ProfileViewModel {
 
   int quantity = 1;
 
+  // ====================== INCREASE QUANTITY ======================
   Future<void> detailIncrease(String? cartItemId, String? mainFoodId) async {
     final cartDetails = menuDetail?.data?.cartDetails;
 
     if (cartDetails != null && cartItemId != null && cartItemId.isNotEmpty) {
-      // Item already in cart → update backend via "increase"
+      // Item already in cart → Update on backend
       await updateFoodCartItem(
         UpdateQuantityModel(type: "increase"),
         cartItemId,
       );
-      await fetchMenuDetail(mainFoodId ?? '');
     } else {
-      // Item not in cart → just increase local quantity
+      // Item not in cart → Increase local quantity
       quantity++;
+    }
+
+    // Always refresh menu detail to get latest data from server
+    if (mainFoodId != null && mainFoodId.isNotEmpty) {
+      await fetchMenuDetail(mainFoodId);
+    } else {
       notifyListeners();
     }
   }
 
-  // Decrease quantity
+  // ====================== DECREASE QUANTITY ======================
   Future<void> detailDecrease(String? cartItemId, String? mainFoodId) async {
     final cartDetails = menuDetail?.data?.cartDetails;
 
     if (cartDetails != null && cartItemId != null && cartItemId.isNotEmpty) {
-      // Item already in cart → get current quantity from server
+      // Item already in cart
       final currentQty = int.tryParse(cartDetails.quantity ?? '0') ?? 0;
 
       if (currentQty > 1) {
@@ -59,18 +85,24 @@ class CartViewModel extends ProfileViewModel {
       } else if (currentQty == 1) {
         await deleteCartItem(cartItemId);
       }
-      await fetchMenuDetail(mainFoodId ?? '');
     } else {
-      // Item not in cart → just decrease local quantity (never below 1)
+      // Item not in cart → decrease local quantity (minimum 1)
       if (quantity > 1) {
         quantity--;
-        notifyListeners();
       }
+    }
+
+    // Always refresh to sync with backend
+    if (mainFoodId != null && mainFoodId.isNotEmpty) {
+      await fetchMenuDetail(mainFoodId);
+    } else {
+      notifyListeners();
     }
   }
 
   String selectedPaymentMethod = "";
   bool? _isLoad;
+  @override
   bool? get isLoad => _isLoad;
 
   final stt.SpeechToText _speech = stt.SpeechToText();
@@ -141,21 +173,21 @@ class CartViewModel extends ProfileViewModel {
     notifyListeners();
   }
 
-  void selectCategory(int? categoryId) {
-    selectedCategoryId = categoryId;
+ void selectCategory(int? categoryId) {
+  selectedCategoryId = categoryId;
 
-    if (categoryId == null) {
-      selectedCategoryName = "All";
-    } else {
-      final category = menuList?.data?.categories.firstWhere(
-        (cat) => cat.id == categoryId,
-        orElse: () => throw Exception(),
-      );
-      selectedCategoryName = category?.name ?? "Meals";
-    }
-
-    notifyListeners();
+  if (categoryId == null) {
+    selectedCategoryName = "All Meals";
+  } else {
+    final category = menuList?.data?.categories.firstWhere(
+      (cat) => cat.id == categoryId,
+      orElse: () => throw Exception(), // safer
+    );
+    selectedCategoryName = category?.name ?? "Meals";
   }
+
+  notifyListeners();
+}
 
   // Add this method
   void selectPaymentMethod(String method) {
@@ -172,18 +204,105 @@ class CartViewModel extends ProfileViewModel {
     // You can navigate to success screen, show dialog, etc.
   }
 
+  void showAddToCartSuccessBottomSheet(
+    BuildContext context, {
+    required String foodName,
+    required num quantity,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.all(24.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.check_circle,
+                color: AppColors.green, // or your success color
+                size: 60,
+              ),
+              Gap(height: 16),
+              TextView(
+                config: TextViewConfig(
+                  text: "Added to Cart!",
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Gap(height: 8),
+              TextView(
+                config: TextViewConfig(
+                  text: "$quantity x $foodName has been added to your cart",
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.black,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Gap(height: 32),
+
+              // View Cart Button
+              ButtonWidget(
+                config: ButtonConfig(
+                  text: "View Cart",
+                  fontWeight: FontWeight.w600,
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pop(context);
+                    locator<DashboardViewModel>().setIndex(2);
+                  },
+                  height: 56,
+                  radius: 12.r,
+                  buttonColor: AppColors.primary,
+                  textColor: Colors.white,
+                ),
+              ),
+
+              Gap(height: 12),
+
+              // Continue Shopping Button
+              ButtonWidget(
+                config: ButtonConfig(
+                  text: "Continue Shopping",
+                  fontWeight: FontWeight.w600,
+                  onPressed: () {
+                    Navigator.pop(context);
+                    PageRouter.pop();
+                  },
+                  height: 56,
+                  radius: 12.r,
+                  buttonColor: AppColors.primary,
+                  textColor: Colors.white,
+                ),
+              ),
+
+              Gap(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void addToCart({
     required String foodName,
     required String price,
     required int quantity,
     required String imageUrl,
     required AddCartModel model,
+    required BuildContext context,
   }) {
     // AppUiComponents.triggerNotification(
     //   "Added $quantity x $foodName to cart",
     //   error: false,
     // );
-    sendToCart(model);
+    sendToCart(model, foodName, context);
     notifyListeners();
 
     // Optional: Show snackbar
@@ -203,7 +322,11 @@ class CartViewModel extends ProfileViewModel {
   final cartRepo = locator<GeneralRepoImpl>();
   AddCartResModel? _cartAdd;
   AddCartResModel? get cartAdd => _cartAdd;
-  Future<void> sendToCart(AddCartModel cartModel) async {
+  Future<void> sendToCart(
+    AddCartModel cartModel,
+    String foodName,
+    BuildContext context,
+  ) async {
     try {
       _isLoad = true;
       _cartAdd = await runBusyFuture(
@@ -212,12 +335,22 @@ class CartViewModel extends ProfileViewModel {
         busyObject: false,
       );
       _isLoad = false;
-      AppUiComponents.triggerNotification(
-        _cartAdd!.message.toString(),
-        error: false,
-      );
-      await fetchMenuDetail(cartModel.foodItemId.toString());
       notifyListeners();
+      // ignore: unrelated_type_equality_checks
+      if (_cartAdd?.success == true || _cartAdd?.status != false) {
+        // Show success bottom sheet or dialog
+        showAddToCartSuccessBottomSheet(
+          context,
+          foodName: foodName,
+          quantity: cartModel.quantity ?? 1,
+        );
+      } else {
+        AppUiComponents.triggerNotification(
+          _cartAdd?.message ?? "Failed to add to cart",
+          error: true,
+        );
+      }
+      await fetchMenuDetail(cartModel.foodItemId.toString());
     } catch (e) {
       _isLoad = false;
       logger.d(e.toString());
@@ -228,16 +361,32 @@ class CartViewModel extends ProfileViewModel {
 
   MenuListResModel? _menuList;
   MenuListResModel? get menuList => _menuList;
-  Future<void> fetchMenu() async {
+  // Replace your current fetchMenu with this:
+  Future<void> fetchMenu({bool forceRefresh = false}) async {
+    final now = DateTime.now();
+
+    // Skip API call if we have fresh cache (2 minutes)
+    if (!forceRefresh &&
+        _menuList != null &&
+        _lastMenuFetchTime != null &&
+        now.difference(_lastMenuFetchTime!).inMinutes < 2) {
+      return;
+    }
+
     try {
       _isLoad = true;
+      notifyListeners();
+
       _menuList = await runBusyFuture(cartRepo.getMenu(), throwException: true);
-      _isLoad = false;
+
+      _lastMenuFetchTime = now;
       notifyListeners();
     } catch (e) {
       _isLoad = false;
       logger.d(e.toString());
       AppUiComponents.triggerNotification(e.toString(), error: true);
+    } finally {
+      _isLoad = false;
       notifyListeners();
     }
   }
@@ -439,10 +588,6 @@ class CartViewModel extends ProfileViewModel {
         throwException: true,
       );
       _isLoad = false;
-      AppUiComponents.triggerNotification(
-        "${_updateQuantity?.message}",
-        error: false,
-      );
       notifyListeners();
     } catch (e) {
       _isLoad = false;
@@ -463,10 +608,6 @@ class CartViewModel extends ProfileViewModel {
         throwException: true,
       );
       _isLoad = false;
-      AppUiComponents.triggerNotification(
-        "${_updateQuantity?.message}",
-        error: false,
-      );
       await fetchCartItem(forceRefresh: true);
       notifyListeners();
     } catch (e) {

@@ -170,9 +170,20 @@ class CartView extends StatelessWidget {
                               showDialog(
                                 context: context,
                                 builder: (BuildContext context) => AlertDialog(
-                                  title: const Text("Delete Item"),
-                                  content: const Text(
-                                    "Are you sure you want to remove this item from your cart?",
+                                  title: TextView(
+                                    config: TextViewConfig(
+                                      text: "Delete Item",
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  content: TextView(
+                                    config: TextViewConfig(
+                                      text:
+                                          "Are you sure you want to remove this item from your cart?",
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                    ),
                                   ),
                                   actions: [
                                     TextButton(
@@ -181,7 +192,7 @@ class CartView extends StatelessWidget {
                                         config: TextViewConfig(
                                           text: "Cancel",
                                           color: AppColors.black,
-                                          fontSize: 14.sp,
+                                          fontSize: 14,
                                         ),
                                       ),
                                     ),
@@ -196,7 +207,7 @@ class CartView extends StatelessWidget {
                                         config: TextViewConfig(
                                           text: "Delete",
                                           color: AppColors.red100,
-                                          fontSize: 14.sp,
+                                          fontSize: 14,
                                         ),
                                       ),
                                     ),

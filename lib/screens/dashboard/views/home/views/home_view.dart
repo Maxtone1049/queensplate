@@ -39,7 +39,27 @@ class HomeView extends StatelessWidget {
         });
       },
       disposeViewModel: false,
-      builder: (_, model, __) {
+      builder: (_, model, _) {
+        final filteredMeals = (model.menuList?.data?.featuredMeals ?? []).where(
+          (meal) {
+            final matchesCategory =
+                model.selectedCategoryId == null ||
+                meal.categoryId == model.selectedCategoryId;
+
+            final matchesSearch =
+                model.searchQuery.isEmpty ||
+                (meal.name?.toLowerCase().contains(
+                      model.searchQuery.toLowerCase(),
+                    ) ??
+                    false) ||
+                (meal.description?.toLowerCase().contains(
+                      model.searchQuery.toLowerCase(),
+                    ) ??
+                    false);
+
+            return matchesCategory && matchesSearch;
+          },
+        ).toList();
         return BodyWidget(
           config: BodyConfig(
             backgroundColor: AppColors.yellow50,
@@ -57,6 +77,8 @@ class HomeView extends StatelessWidget {
                         Expanded(
                           flex: 2,
                           child: TextField(
+                            onChanged: (value) =>
+                                model.updateSearchQuery(value),
                             decoration: InputDecoration(
                               hintText: "Search for meals",
                               hintStyle: GoogleFonts.dmSans(
@@ -116,14 +138,16 @@ class HomeView extends StatelessWidget {
                           ),
                         ),
                         Gap(width: 6),
-                        TextView(
-                          config: TextViewConfig(
-                            text: model.deliveryAddress.isEmpty
-                                ? "Fetching your location..."
-                                : "Deliver to: ${model.deliveryAddress}",
-                            color: AppColors.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
+                        Expanded(
+                          child: TextView(
+                            config: TextViewConfig(
+                              text: model.deliveryAddress.isEmpty
+                                  ? "Fetching your location..."
+                                  : "Deliver to: ${model.deliveryAddress}",
+                              color: AppColors.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
                         ),
                       ],
@@ -228,11 +252,9 @@ class HomeView extends StatelessWidget {
                                     mainAxisSpacing: 16,
                                     childAspectRatio: 0.75,
                                   ),
-                              itemCount:
-                                  model.menuList?.data?.featuredMeals.length,
+                              itemCount: filteredMeals.length,
                               itemBuilder: (context, index) {
-                                final isJollof =
-                                    model.menuList!.data!.featuredMeals[index];
+                                final isJollof = filteredMeals[index];
                                 return MealCard(
                                   imageUrl:
                                       isJollof.image!.isNotEmpty &&

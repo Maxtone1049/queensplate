@@ -23,7 +23,7 @@ class MenuView extends StatelessWidget {
   const MenuView({super.key});
 
   Future<void> _refreshData(CartViewModel model) async {
-    await model.fetchMenu();
+    await model.fetchMenu(forceRefresh: true);
   }
 
   @override
@@ -33,31 +33,34 @@ class MenuView extends StatelessWidget {
       onViewModelReady: (model) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           await model.fetchMenu();
-          // await model.initializeSpeech();
         });
       },
       disposeViewModel: false,
       builder: (_, model, __) {
-        final filteredMeals = (model.menuList?.data?.featuredMeals ?? []).where(
-          (meal) {
-            final matchesCategory =
-                model.selectedCategoryId == null ||
-                meal.categoryId == model.selectedCategoryId;
+        // ====================== FIXED & PROPER FILTERING ======================
+        final allMeals = model.menuList?.data?.featuredMeals ?? [];
 
-            final matchesSearch =
-                model.searchQuery.isEmpty ||
-                (meal.name?.toLowerCase().contains(
-                      model.searchQuery.toLowerCase(),
-                    ) ??
-                    false) ||
-                (meal.description?.toLowerCase().contains(
-                      model.searchQuery.toLowerCase(),
-                    ) ??
-                    false);
+        final filteredMeals = allMeals.where((meal) {
+          // Handle String vs Int comparison safely
+          final mealCategoryId = meal.categoryId?.toString().trim();
 
-            return matchesCategory && matchesSearch;
-          },
-        ).toList();
+          final matchesCategory =
+              model.selectedCategoryId == null ||
+              mealCategoryId == model.selectedCategoryId?.toString();
+
+          final matchesSearch =
+              model.searchQuery.isEmpty ||
+              (meal.name?.toLowerCase().contains(
+                    model.searchQuery.toLowerCase(),
+                  ) ??
+                  false) ||
+              (meal.description?.toLowerCase().contains(
+                    model.searchQuery.toLowerCase(),
+                  ) ??
+                  false);
+
+          return matchesCategory && matchesSearch;
+        }).toList();
 
         return BodyWidget(
           config: BodyConfig(
@@ -71,6 +74,8 @@ class MenuView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Gap(height: 30),
+
+                    // Search Bar + Notification
                     Row(
                       children: [
                         Expanded(
@@ -81,10 +86,10 @@ class MenuView extends StatelessWidget {
                             decoration: InputDecoration(
                               hintText: "Search for meals",
                               hintStyle: GoogleFonts.dmSans(
-                                fontSize: 8.25,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
-                              prefixIcon: Icon(
+                              prefixIcon: const Icon(
                                 Icons.search,
                                 color: AppColors.primary,
                               ),
@@ -100,34 +105,21 @@ class MenuView extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Gap(width: 42),
-                        Expanded(
-                          flex: 0,
-                          child: Row(
-                            children: [
-                              // ImageView(
-                              //   imageConfig: ImageConfig(
-                              //     imageURL: AppImage.firedup,
-                              //     imageType: ImageType.svg,
-                              //   ),
-                              // ),
-                              Gap(width: 9),
-                              ImageView(
-                                imageConfig: ImageConfig(
-                                  imageURL: AppImage.notify,
-                                  imageType: ImageType.svg,
-                                  onTap: () => PageRouter.pushNamed(
-                                    Routes.notificationView,
-                                  ),
-                                ),
-                              ),
-                            ],
+                        Gap(width: 16),
+                        ImageView(
+                          imageConfig: ImageConfig(
+                            imageURL: AppImage.notify,
+                            imageType: ImageType.svg,
+                            onTap: () =>
+                                PageRouter.pushNamed(Routes.notificationView),
                           ),
                         ),
                       ],
                     ),
 
-                    Gap(height: 14),
+                    Gap(height: 24),
+
+                    // Categories Section
                     TextView(
                       config: TextViewConfig(
                         text: "Menu Categories",
@@ -136,60 +128,72 @@ class MenuView extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    Gap(height: 16),
-                    if (model.isBusy)
-                      TransactionSkeleton(count: 1)
+                    Gap(height: 12),
+
+                    if (model.isBusy && model.menuList == null)
+                      const TransactionSkeleton(count: 1)
                     else
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            ...?model.menuList?.data?.categories.map((
-                              category,
-                            ) {
-                              return MenuCategoryWidget(
-                                image: category.image?.isNotEmpty == true
-                                    ? AppImage.ricedish
-                                    : AppImage.ricedish,
-                                catname: category.name.toString(),
-                                isSelected: category.name == "All"
-                                    ? model.selectedCategoryId == null
-                                    : model.selectedCategoryId == category.id,
-                                onTap: () => category.name == "All"
-                                    ? model.selectCategory(null)
-                                    : model.selectCategory(category.id),
-                              );
-                            }),
+                            // "All" Category
+                            MenuCategoryWidget(
+                              image: AppImage.ricedish,
+                              catname: "All",
+                              isSelected: model.selectedCategoryId == null,
+                              onTap: () => model.selectCategory(null),
+                            ),
+                            // Other Categories
+                            ...?model.menuList?.data?.categories
+                                .where(
+                                  (cat) => cat.name?.toLowerCase() != "all",
+                                ) // Avoid duplicate "All"
+                                .map((category) {
+                                  return MenuCategoryWidget(
+                                    image: category.image?.isNotEmpty == true
+                                        ? category.image!
+                                        : AppImage.ricedish,
+                                    catname: category.name ?? "",
+                                    isSelected:
+                                        model.selectedCategoryId == category.id,
+                                    onTap: () =>
+                                        model.selectCategory(category.id),
+                                  );
+                                }),
                           ],
                         ),
                       ),
-                    Gap(height: 20),
 
+                    Gap(height: 24),
+
+                    // Header for current selection
                     TextView(
                       config: TextViewConfig(
-                        text: model.selectedCategoryName ?? "All",
+                        text: model.selectedCategoryName ?? "All Meals",
                         fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                        fontSize: 18,
                         color: AppColors.textColor,
                       ),
                     ),
 
                     Gap(height: 16),
 
-                    // Meal Grid
+                    // Meals Grid
                     AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 400),
-                      transitionBuilder: (child, animation) {
-                        return FadeTransition(opacity: animation, child: child);
-                      },
-                      child: model.isBusy
-                          ? SizedBox(height: 150, child: ShimmerLoader())
-                          : (filteredMeals.isEmpty)
+                      duration: const Duration(milliseconds: 300),
+                      child: model.isBusy && model.menuList == null
+                          ? const SizedBox(height: 200, child: ShimmerLoader())
+                          : filteredMeals.isEmpty
                           ? const Center(
                               child: Padding(
-                                padding: EdgeInsets.all(50),
+                                padding: EdgeInsets.symmetric(vertical: 60),
                                 child: Text(
-                                  "No meals available in this category",
+                                  "No meals found in this category",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ),
                             )
@@ -200,7 +204,7 @@ class MenuView extends StatelessWidget {
                                   const SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: 2,
                                     crossAxisSpacing: 16,
-                                    mainAxisSpacing: 16,
+                                    mainAxisSpacing: 20,
                                     childAspectRatio: 0.75,
                                   ),
                               itemCount: filteredMeals.length,
@@ -209,15 +213,14 @@ class MenuView extends StatelessWidget {
                                 return MealCard(
                                   imageUrl: meal.image.toString(),
                                   title: meal.name.toString(),
-                                  price: meal.price.toString(),
+                                  price: "₦${meal.price}",
                                   tap: () {
                                     PageRouter.pushNamed(
                                       Routes.foodMenuDetailView,
                                       args: FoodMenuDetailViewArguments(
-                                        foodName: "${meal.name}",
+                                        foodName: meal.name ?? "",
                                         price: "₦${meal.price}",
-                                        description: meal.description
-                                            .toString(),
+                                        description: meal.description ?? "",
                                         imageUrl: meal.image.toString(),
                                         category: meal.categoryId.toString(),
                                         foodId: meal.id.toString(),

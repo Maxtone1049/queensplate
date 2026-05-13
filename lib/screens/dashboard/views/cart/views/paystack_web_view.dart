@@ -1,11 +1,9 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-// Web only
-import 'dart:html' as html;
-import 'dart:ui_web' as ui_web;
-
+// Your existing imports - adjust paths as needed
 import 'package:queen_plate_delivery/Common/Image/ImageView.dart';
 import 'package:queen_plate_delivery/Common/Image/Model/ImageConfig.dart';
 import 'package:queen_plate_delivery/Common/TextView/Models/TextViewConfig.dart';
@@ -35,42 +33,43 @@ class PaystackWebView extends StatefulWidget {
 }
 
 class _PaystackWebViewState extends State<PaystackWebView> {
-  WebViewController? mobileController;
+  WebViewController? _controller;
   bool isLoading = true;
-  String? _iframeViewId;
+  bool _isProcessingCancel = false;
 
-  // Cancel detection URLs
-  final List<String> cancelUrls = [
+  // URLs that indicate user cancelled payment
+  final List<String> cancelIndicators = [
     'https://standard.paystack.co/close',
-    // Add your custom cancel_action URL here if you set it in metadata
-    // e.g., 'https://yourdomain.com/cancel',
+    'paystack.co/close',
+    'cancel',
+    'close',
   ];
 
   @override
   void initState() {
     super.initState();
 
-    if (!kIsWeb) {
-      _initMobileWebView();
+    if (kIsWeb) {
+      _handleWebPayment();
     } else {
-      _initWebIframe();
+      _initMobileWebView();
     }
 
-    // Safety timeout: hide loader after 25 seconds even if callbacks fail
-    Future.delayed(const Duration(seconds: 25), () {
+    // Safety timeout
+    Future.delayed(const Duration(seconds: 30), () {
       if (mounted && isLoading) {
         setState(() => isLoading = false);
       }
     });
   }
 
+  // MOBILE: Initialize WebView
   void _initMobileWebView() {
-    mobileController = WebViewController()
+    _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
-            // Optional: you can show progress % if you want
             if (progress == 100) {
               setState(() => isLoading = false);
             }
@@ -80,7 +79,7 @@ class _PaystackWebViewState extends State<PaystackWebView> {
           },
           onPageFinished: (String url) {
             setState(() => isLoading = false);
-            _handleUrlChange(url);
+            _checkUrlForCancel(url);
           },
           onWebResourceError: (WebResourceError error) {
             setState(() => isLoading = false);
@@ -91,68 +90,110 @@ class _PaystackWebViewState extends State<PaystackWebView> {
       ..loadRequest(Uri.parse(widget.paymentUrl));
   }
 
-  void _initWebIframe() {
-    _iframeViewId = 'paystack-iframe-${DateTime.now().millisecondsSinceEpoch}';
-    ui_web.platformViewRegistry.registerViewFactory(_iframeViewId!, (
-      int viewId,
-    ) {
-      final iframe = html.IFrameElement()
-        ..src = widget.paymentUrl
-        ..style.border = 'none'
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..allow = 'payment; encrypted-media';
-      return iframe;
-    });
-
-    // On web, hide loader after a short delay (iframe loading is harder to track)
-    Future.delayed(const Duration(seconds: 8), () {
-      if (mounted && isLoading) setState(() => isLoading = false);
-    });
-  }
-
-  void _handleUrlChange(String url) {
+  // Check if URL indicates cancel action
+  void _checkUrlForCancel(String url) {
     final lowerUrl = url.toLowerCase();
 
-    // SUCCESS
-    if (lowerUrl.contains("success") ||
-        lowerUrl.contains("reference=") ||
-        lowerUrl.contains("trxref=") ||
-        lowerUrl.contains("status=success")) {
-      final uri = Uri.parse(url);
-      final reference =
-          uri.queryParameters['reference'] ??
-          uri.queryParameters['trxref'] ??
-          "success";
+    bool isCancel = cancelIndicators.any(
+      (indicator) => lowerUrl.contains(indicator.toLowerCase()),
+    );
 
-      if (reference.isNotEmpty) {
-        widget.onPaymentSuccess(reference);
-        return;
-      }
-    }
-
-    // CANCEL
-    final isCancel =
-        cancelUrls.any((c) => lowerUrl.startsWith(c.toLowerCase())) ||
-        lowerUrl.contains("cancel") ||
-        lowerUrl.contains("close");
-
-    if (isCancel) {
-      _handlePaymentCancelled();
+    if (isCancel && !_isProcessingCancel) {
+      _handleCancelFromPaystack();
     }
   }
 
-  void _handlePaymentCancelled() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("You've cancelled the payment."),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 3),
-      ),
-    );
+  // Handle cancel action from Paystack
+  void _handleCancelFromPaystack() {
+    if (_isProcessingCancel) return;
 
+    setState(() {
+      _isProcessingCancel = true;
+      isLoading = false;
+    });
+
+    debugPrint('Paystack payment cancelled by user');
+
+    // Call the cancellation callback if provided
     widget.onPaymentCancelled?.call();
 
+    // Immediately pop back to original screen
+    if (mounted) {
+      // Show brief feedback before popping
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Payment cancelled"),
+          backgroundColor: Colors.orange,
+          duration: Duration(milliseconds: 800),
+        ),
+      );
+
+      // Pop after a short delay to show the SnackBar
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) {
+          PageRouter.pop();
+        }
+      });
+    }
+  }
+
+  // WEB: Handle payment in browser
+  Future<void> _handleWebPayment() async {
+    setState(() => isLoading = true);
+
+    final Uri url = Uri.parse(widget.paymentUrl);
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+
+      // Show dialog when user returns to app
+      _showReturnDialog();
+    } else {
+      setState(() => isLoading = false);
+      _handleError('Could not open payment page');
+    }
+  }
+
+  void _showReturnDialog() {
+    setState(() => isLoading = false);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Payment Status'),
+        content: const Text('What would you like to do?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _handleCancelFromPaystack();
+            },
+            child: const Text(
+              'Cancel Payment',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              widget.onPaymentSuccess(widget.orderId);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00A651),
+            ),
+            child: const Text('Payment Completed'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+    widget.onPaymentCancelled?.call();
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) PageRouter.pop();
     });
@@ -169,7 +210,7 @@ class _PaystackWebViewState extends State<PaystackWebView> {
               imageConfig: ImageConfig(
                 imageURL: AppImage.circlebackarrow,
                 imageType: ImageType.svg,
-                onTap: () => PageRouter.pop(),
+                onTap: _handleCancelFromPaystack, // User taps back button
               ),
             ),
             const Spacer(),
@@ -183,37 +224,86 @@ class _PaystackWebViewState extends State<PaystackWebView> {
             const Spacer(),
           ],
         ),
-        child: Stack(
-          children: [
-            // Mobile WebView
-            if (!kIsWeb && mobileController != null)
-              WebViewWidget(controller: mobileController!),
-
-            // Web Iframe
-            if (kIsWeb && _iframeViewId != null)
-              HtmlElementView(viewType: _iframeViewId!),
-
-            // Loading Overlay
-            if (isLoading)
-              const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(color: Color(0xFF00A651)),
-                    SizedBox(height: 16),
-                    Text("Connecting to Paystack..."),
-                  ],
-                ),
-              ),
-          ],
-        ),
+        child: kIsWeb ? _buildWebUI() : _buildMobileUI(),
       ),
+    );
+  }
+
+  Widget _buildWebUI() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.open_in_browser, size: 64, color: Color(0xFF00A651)),
+          const SizedBox(height: 24),
+          TextView(
+            config: TextViewConfig(
+              text: "Opening Paystack in browser...",
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (isLoading)
+            const Column(
+              children: [
+                CircularProgressIndicator(color: Color(0xFF00A651)),
+                SizedBox(height: 16),
+                Text("Please wait..."),
+              ],
+            )
+          else
+            TextButton(
+              onPressed: _handleCancelFromPaystack,
+              child: const Text(
+                "Cancel Payment",
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileUI() {
+    return Stack(
+      children: [
+        if (_controller != null) WebViewWidget(controller: _controller!),
+        if (isLoading && !_isProcessingCancel)
+          Container(
+            color: Colors.white,
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFF00A651)),
+                  SizedBox(height: 16),
+                  Text("Connecting to Paystack..."),
+                ],
+              ),
+            ),
+          ),
+        if (_isProcessingCancel)
+          Container(
+            color: Colors.white,
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.cancel_outlined, size: 48, color: Colors.orange),
+                  SizedBox(height: 16),
+                  Text("Cancelling payment..."),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 
   @override
   void dispose() {
-    mobileController?.clearCache();
+    _controller?.clearCache();
     super.dispose();
   }
 }

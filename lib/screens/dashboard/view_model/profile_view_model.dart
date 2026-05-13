@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:queen_plate_delivery/common/AppUtils/app_ui_components.dart';
@@ -22,13 +24,12 @@ import 'package:queen_plate_delivery/screens/dashboard/models/update_user_profil
 import 'package:queen_plate_delivery/screens/dashboard/repo/general_repo_impl.dart';
 import 'package:queen_plate_delivery/screens/dashboard/view_model/sub_model.dart';
 import 'package:stacked/stacked.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileViewModel extends BaseViewModel {
   ProfileViewModel();
-  void editProfile() {
-    // Navigate to edit profile screen
-  }
 
+  final updateKey = GlobalKey<FormState>();
   // Add these properties
   List<OrderModel> orders = [];
 
@@ -69,6 +70,33 @@ class ProfileViewModel extends BaseViewModel {
   String get phoneNumber => defaultAddress?.phoneNumber ?? '';
   String get addressState => defaultAddress?.state ?? 'N/A';
   String get addressCountry => defaultAddress?.country ?? 'N/A';
+
+  bool get hasValidDeliveryAddress {
+    if (addresses.isEmpty) return false;
+
+    final addr = defaultAddress;
+    if (addr == null) return false;
+
+    return (addr.streetAddress?.trim().isNotEmpty ?? false) ||
+        (addressMain.isNotEmpty && addressMain != 'N/A');
+  }
+
+  bool get hasValidPhoneNumber {
+    final phone = phoneNumber.trim();
+    return phone.isNotEmpty && phone.length >= 10;
+  }
+
+  bool get isProfileCompleteForCheckout =>
+      hasValidDeliveryAddress && hasValidPhoneNumber;
+
+  String? get missingProfileInfo {
+    final List<String> missing = [];
+    if (!hasValidDeliveryAddress) missing.add("Delivery Address");
+    if (!hasValidPhoneNumber) missing.add("Phone Number");
+
+    if (missing.isEmpty) return null;
+    return "Click to update your ${missing.join(" and ")} to proceed with checkout.";
+  }
 
   Future<void> logout() async {
     try {
@@ -152,7 +180,7 @@ class ProfileViewModel extends BaseViewModel {
       case 'received' || 'pending':
         completedIndex = 0;
         break;
-      case 'prepared':
+      case 'prepared' || 'processing':
         completedIndex = 1;
         break;
       case 'ready_for_pick':
@@ -263,24 +291,88 @@ class ProfileViewModel extends BaseViewModel {
   String deliveryAddress = "Fetching your location...";
   bool _isGettingLocation = false;
 
-  // Improved Method - Shows permission request on BOTH Mobile and Web
+  // THIRD-PARTY GEOCODING SERVICE FOR WEB
+  // Using Nominatim (OpenStreetMap) - Free, no API key required
+  Future<String> _getAddressFromCoordinatesWeb(
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      // Nominatim API (OpenStreetMap) - Free tier
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$latitude&lon=$longitude&zoom=18&addressdetails=1',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          'User-Agent': 'QueenPlateDelivery/1.0 (your-email@example.com)',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final address = data['display_name'] as String?;
+
+        if (address != null && address.isNotEmpty) {
+          return address;
+        }
+      }
+
+      // Fallback to coordinates if API fails
+      return "Location: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}";
+    } catch (e) {
+      debugPrint("Web geocoding error: $e");
+      // Fallback to coordinates
+      return "Location: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}";
+    }
+  }
+
+  // ALTERNATIVE: Google Maps Geocoding API (requires API key)
+  // Uncomment and add your API key if you prefer Google
+  /*
+  Future<String> _getAddressFromCoordinatesWebGoogle(
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      const apiKey = 'YOUR_GOOGLE_MAPS_API_KEY'; // Add your API key here
+      final url = Uri.parse(
+        'https://maps.googleapis.com/maps/api/geocode/json?latlng=$latitude,$longitude&key=$apiKey',
+      );
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['results'] != null && data['results'].isNotEmpty) {
+          return data['results'][0]['formatted_address'];
+        }
+      }
+      
+      return "Location: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}";
+    } catch (e) {
+      debugPrint("Google geocoding error: $e");
+      return "Location: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}";
+    }
+  }
+  */
+
+  // ENHANCED METHOD - Handles Web and Mobile with third-party service for Web
   Future<void> getCurrentDeliveryAddress() async {
     if (_isGettingLocation) return;
 
     _isGettingLocation = true;
-    deliveryAddress = "Requesting location access..."; // Clear feedback
+    deliveryAddress = "Requesting location access...";
     notifyListeners();
 
     try {
-      Position position;
-
-      // ==================== COMMON PERMISSION REQUEST ====================
-      // This works on both Mobile and Web
+      // ==================== LOCATION PERMISSION ====================
       LocationPermission permission = await Geolocator.checkPermission();
 
       if (permission == LocationPermission.denied) {
-        permission =
-            await Geolocator.requestPermission(); // ← This triggers the prompt
+        permission = await Geolocator.requestPermission();
       }
 
       if (permission == LocationPermission.deniedForever ||
@@ -288,63 +380,86 @@ class ProfileViewModel extends BaseViewModel {
         deliveryAddress = kIsWeb
             ? "Location access denied.\nPlease allow location permission in your browser settings."
             : "Location permission denied.\nPlease enable it in your device settings.";
+        _isGettingLocation = false;
+        notifyListeners();
         return;
       }
 
-      // ==================== GET POSITION (Platform Specific) ====================
+      // ==================== CHECK LOCATION SERVICE (Mobile only) ====================
       if (!kIsWeb) {
-        // Mobile only: Check if location service is enabled
         bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
         if (!serviceEnabled) {
           deliveryAddress = "Please enable location services on your device.";
+          _isGettingLocation = false;
+          notifyListeners();
           return;
         }
       }
 
-      // Get current position (this works on both platforms)
-      position = await Geolocator.getCurrentPosition(
+      // ==================== GET COORDINATES ====================
+      final Position position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
         ),
       );
 
-      // ==================== REVERSE GEOCODING ====================
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks[0];
-
-        String address =
-            "${place.street ?? ''}, ${place.locality ?? ''}, "
-                    "${place.administrativeArea ?? ''}, ${place.country ?? ''}"
-                .replaceAll(RegExp(r', ,'), ',')
-                .replaceAll(RegExp(r', $'), '')
-                .trim();
-
-        if (address.endsWith(',')) {
-          address = address.substring(0, address.length - 1);
-        }
-
-        deliveryAddress = address.isNotEmpty
-            ? address
-            : "${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
+      // ==================== REVERSE GEOCODING (Platform-specific) ====================
+      if (kIsWeb) {
+        // WEB: Use third-party geocoding service
+        deliveryAddress = await _getAddressFromCoordinatesWeb(
+          position.latitude,
+          position.longitude,
+        );
       } else {
-        // Fallback to coordinates
-        deliveryAddress =
-            "${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
+        // MOBILE: Use device location service and geocoding package
+        final List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+
+        if (placemarks.isNotEmpty) {
+          final Placemark place = placemarks[0];
+          String address =
+              "${place.street ?? ''}, ${place.locality ?? ''}, "
+              "${place.administrativeArea ?? ''}, ${place.country ?? ''}";
+
+          // Clean up the address string
+          address = address
+              .replaceAll(RegExp(r', ,'), ',')
+              .replaceAll(RegExp(r', $'), '')
+              .trim();
+
+          deliveryAddress = address.isNotEmpty
+              ? address
+              : "${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
+        } else {
+          // Fallback to coordinates if no address found
+          deliveryAddress =
+              "${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
+        }
       }
     } catch (e) {
       debugPrint("Location error: $e");
 
       deliveryAddress = kIsWeb
-          ? "Unable to get location.\nPlease allow location access when prompted by your browser."
+          ? "Unable to get location.\nPlease ensure location access is allowed in your browser."
           : "Unable to get location. Please check your device settings.";
     } finally {
       _isGettingLocation = false;
       notifyListeners();
+    }
+  }
+
+  // Helper method to open location in map (useful for web)
+  Future<void> openLocationInMap(double latitude, double longitude) async {
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      AppUiComponents.triggerNotification("Could not open maps", error: true);
     }
   }
 

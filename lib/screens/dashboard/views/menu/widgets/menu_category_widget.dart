@@ -27,10 +27,25 @@ class MenuCategoryWidget extends StatelessWidget {
         margin: EdgeInsets.only(right: 10.w),
         child: Column(
           children: [
-            ImageView(
-              imageConfig: ImageConfig(
-                imageURL: image,
-                imageType: ImageType.svg,
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  width: isSelected ? 2.w : 2.w,
+                  color: isSelected ? AppColors.primary : AppColors.grey1100,
+                ),
+                borderRadius: BorderRadius.circular(20.r),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20.r),
+                child: ImageView(
+                  imageConfig: ImageConfig(
+                    imageURL: image,
+                    imageType: image.contains("https")
+                        ? ImageType.network
+                        : ImageType.svg,
+                    height: 60,
+                  ),
+                ),
               ),
             ),
             Gap(height: 8),

@@ -20,6 +20,7 @@ import 'package:queen_plate_delivery/core/main_core/app.router.dart';
 import 'package:queen_plate_delivery/core/router/page_router.dart';
 import 'package:queen_plate_delivery/screens/dashboard/models/checkout_model.dart';
 import 'package:queen_plate_delivery/screens/dashboard/view_model/cart_view_model.dart';
+import 'package:queen_plate_delivery/screens/dashboard/view_model/profile_view_model.dart';
 import 'package:queen_plate_delivery/screens/dashboard/views/cart/views/checkout_view.form.dart';
 import 'package:queen_plate_delivery/screens/dashboard/views/cart/widgets/checkout_widget.dart';
 import 'package:queen_plate_delivery/screens/dashboard/views/order/widgets/shimmer_loader.dart';
@@ -36,17 +37,30 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
       viewModelBuilder: () => locator<CartViewModel>(),
       disposeViewModel: false,
       onDispose: (model) => disposeForm(),
-      onViewModelReady: (model) {
+      onViewModelReady: (model) async {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           model.selectedPaymentMethod = '';
           await model.fetchCartItem(forceRefresh: true);
         });
+
+        // Ensure profile data is loaded
+        final profileVM = locator<ProfileViewModel>();
+        if (profileVM.addresses.isEmpty) {
+          await profileVM.fetchUser();
+        }
       },
-      builder: (_, model, _) {
-        void showAddressBottomSheet(BuildContext context, CartViewModel model) {
-          String? tempSelectedAddress = model.customDeliveryAddress;
-          final TextEditingController newAddressController =
-              TextEditingController();
+      builder: (context, model, child) {
+        // ==================== IMPROVED ADDRESS BOTTOM SHEET ====================
+        void showAddressBottomSheet() {
+          String? tempSelectedAddress =
+              model.customDeliveryAddress ??
+              (model.addressMain != "N/A"
+                  ? "${model.addressMain}, ${model.addressState}, ${model.addressCountry}"
+                  : null);
+
+          final newAddressController = TextEditingController(
+            text: model.customDeliveryAddress,
+          );
 
           showModalBottomSheet(
             context: context,
@@ -79,6 +93,7 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                           ),
                         ),
                         Gap(height: 20.h),
+
                         TextView(
                           config: TextViewConfig(
                             text: "Select Delivery Address",
@@ -88,9 +103,9 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                         ),
                         Gap(height: 16.h),
 
-                        // Current location option
+                        // Use Current Location
                         ListTile(
-                          leading: Icon(
+                          leading: const Icon(
                             Icons.my_location,
                             color: AppColors.primary,
                           ),
@@ -107,11 +122,8 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                                 ? "current"
                                 : null,
                             onChanged: (_) async {
-                              // Fetch current location if not already available
-                              if (model.deliveryAddress.contains("Fetching") ||
-                                  model.deliveryAddress.contains("Unable")) {
-                                await model.getCurrentDeliveryAddress();
-                              }
+                              await model
+                                  .getCurrentDeliveryAddress(); // Assuming this exists in CartVM or call from ProfileVM
                               setState(() {
                                 tempSelectedAddress = model.deliveryAddress;
                               });
@@ -119,12 +131,13 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                           ),
                         ),
 
-                        // Saved addresses from ProfileViewModel
+                        // Saved Addresses
                         ...model.addresses.map((address) {
                           final fullAddress =
                               "${address.streetAddress}, ${address.state}, ${address.country}";
+
                           return ListTile(
-                            leading: Icon(
+                            leading: const Icon(
                               Icons.location_on,
                               color: AppColors.primary,
                             ),
@@ -147,38 +160,43 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                           );
                         }),
 
-                        // Manual entry
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8.h),
-                          child: TextField(
-                            controller: newAddressController,
-                            decoration: InputDecoration(
-                              hintText: "Or enter a new address",
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16.w,
-                                vertical: 12.h,
-                              ),
+                        Gap(height: 8.h),
+
+                        // Manual Address Entry
+                        TextField(
+                          controller: newAddressController,
+                          maxLines: 2,
+                          decoration: InputDecoration(
+                            hintText: "Or enter a new address manually",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16.w,
+                              vertical: 12.h,
                             ),
                           ),
                         ),
 
+                        Gap(height: 24.h),
+
                         ButtonWidget(
                           config: ButtonConfig(
-                            text: "Use this address",
+                            text: "Save & Use Address",
                             onPressed: () {
                               String finalAddress = tempSelectedAddress ?? "";
+
                               if (newAddressController.text.trim().isNotEmpty) {
                                 finalAddress = newAddressController.text.trim();
                               }
+
                               if (finalAddress.isNotEmpty) {
                                 model.setDeliveryAddress(finalAddress);
                               }
+
                               Navigator.pop(context);
                             },
-                            height: 50.h,
+                            height: 52,
                             radius: 12.r,
                             fontWeight: FontWeight.w600,
                           ),
@@ -193,6 +211,7 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
           );
         }
 
+        // ==================== MAIN UI ====================
         return BodyWidget(
           config: BodyConfig(
             backgroundColor: AppColors.background,
@@ -231,10 +250,9 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-
                   Gap(height: 24.h),
 
-                  // Delivery Address (unchanged)
+                  // Delivery Address Section
                   Row(
                     children: [
                       ImageView(
@@ -254,6 +272,7 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                     ],
                   ),
                   Gap(height: 12.h),
+
                   Container(
                     padding: EdgeInsets.all(16.w),
                     decoration: BoxDecoration(
@@ -268,19 +287,22 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                               text:
                                   model.customDeliveryAddress ??
                                   (model.addressMain != "N/A"
-                                      ? model.addressMain
+                                      ? "${model.addressMain}, ${model.addressState}, ${model.addressCountry}"
                                       : model.deliveryAddress),
                               fontSize: 14,
+                              maxLines: 3,
                             ),
                           ),
                         ),
-                        TextView(
-                          config: TextViewConfig(
-                            text: "Edit",
-                            fontSize: 16,
-                            onTap: () => showAddressBottomSheet(context, model),
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
+                        GestureDetector(
+                          onTap: showAddressBottomSheet,
+                          child: TextView(
+                            config: TextViewConfig(
+                              text: "Change",
+                              fontSize: 16,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -288,32 +310,60 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                   ),
 
                   Gap(height: 16.h),
+
+                  // Delivery Note
                   EditFormField(
                     config: EditFieldConfig(
                       title: 'Note',
-                      label: 'Write a Delivery Note',
+                      label: 'Write a Delivery Note (Optional)',
                       controller: noteController,
                       focusNode: noteFocusNode,
                       labelStyle: GoogleFonts.dmSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.black,
                       ),
                       textStyle: GoogleFonts.dmSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.black,
                       ),
-                      alignLabelWithHint: true,
                       maxLines: 4,
                       minLines: 3,
                     ),
                   ),
-                  Gap(height: 16.h),
+
+                  Gap(height: 20.h),
+
+                  // Profile Completion Warning
+                  if (!model.isProfileReadyForCheckout)
+                    GestureDetector(
+                      onTap: () =>
+                          PageRouter.pushNamed(Routes.editDeliveryDetailView),
+                      child: Container(
+                        padding: EdgeInsets.all(14.w),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withAlpha((0.08 * 225).toInt()),
+                          borderRadius: BorderRadius.circular(10.r),
+                          border: Border.all(
+                            color: Colors.orange.withOpacity(0.3),
+                          ),
+                        ),
+                        child: TextView(
+                          config: TextViewConfig(
+                            text:
+                                model.profileCompletionMessage ??
+                                "Please complete your profile",
+                            fontSize: 13.5,
+                            color: Colors.orange[800],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  Gap(height: 20.h),
 
                   // Order Summary
                   if (model.isBusy)
-                    SizedBox(height: 150, child: ShimmerLoader())
+                    const SizedBox(height: 150, child: ShimmerLoader())
                   else
                     Container(
                       padding: EdgeInsets.all(16.w),
@@ -365,17 +415,18 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                "Total",
-                                style: TextStyle(
-                                  fontSize: 18.sp,
+                              TextView(
+                                config: TextViewConfig(
+                                  text: "Total",
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              Text(
-                                "₦${model.cartResModel?.data?.summary?.total ?? 0}",
-                                style: TextStyle(
-                                  fontSize: 20.sp,
+                              TextView(
+                                config: TextViewConfig(
+                                  text:
+                                      "₦${model.cartResModel?.data?.summary?.total ?? 0}",
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.primary,
                                 ),
@@ -385,7 +436,6 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                         ],
                       ),
                     ),
-
                   Gap(height: 20.h),
 
                   // Payment Options
@@ -394,51 +444,47 @@ class CheckoutView extends StatelessWidget with $CheckoutView {
                     type: "paystack",
                     iconPath: "assets/images/paystack.png",
                   ),
-
-                  // Gap(height: 12.h),
-                  // buildPaymentOption(
-                  //   model: model,
-                  //   type: "opay",
-                  //   iconPath: "assets/images/opay.png",
-                  // ),
                   Gap(height: 40.h),
 
                   // Place Order Button
                   ButtonWidget(
                     config: ButtonConfig(
-                      text: "Place order",
+                      text: "Place Order",
                       loading: model.isLoad ?? false,
                       onPressed: () {
-                        if (model.selectedPaymentMethod.isEmpty) {
-                          return null;
-                        } else if (model.phoneNumber.isEmpty) {
+                        if (!model.isProfileReadyForCheckout) {
                           AppUiComponents.triggerNotification(
-                            "Kindly Update Your Profile",
+                            model.profileCompletionMessage ??
+                                "Please update your address and phone number",
                           );
                           PageRouter.pushNamed(Routes.editDeliveryDetailView);
-                        } else {
-                          model.makePayment(
-                            CheckoutModel(
-                              deliveryAddress:
-                                  model.customDeliveryAddress ??
-                                  (model.addressMain != "N/A"
-                                      ? "${model.addressMain}, ${model.addressState}, ${model.addressCountry}"
-                                      : model.deliveryAddress),
-                              paymentMethod: model.selectedPaymentMethod,
-                              checkoutNote: noteController.text,
-                            ),
-                          );
+                          return;
                         }
+
+                        if (model.selectedPaymentMethod.isEmpty) {
+                          AppUiComponents.triggerNotification(
+                            "Please select a payment method",
+                          );
+                          return;
+                        }
+
+                        model.makePayment(
+                          CheckoutModel(
+                            deliveryAddress:
+                                model.customDeliveryAddress ??
+                                "${model.addressMain}, ${model.addressState}, ${model.addressCountry}",
+                            paymentMethod: model.selectedPaymentMethod,
+                            checkoutNote: noteController.text.trim(),
+                          ),
+                        );
                       },
-                      height: 56,
+                      height: 56.h,
                       enabled:
                           model.selectedPaymentMethod.isNotEmpty &&
-                          model.phoneNumber.isNotEmpty,
-                      buttonColor: model.selectedPaymentMethod.isNotEmpty
-                          ? AppColors.primary
-                          : AppColors.grey1000,
-                      buttonOutlinedColor:
-                          model.selectedPaymentMethod.isNotEmpty
+                          model.isProfileReadyForCheckout,
+                      buttonColor:
+                          (model.selectedPaymentMethod.isNotEmpty &&
+                              model.isProfileReadyForCheckout)
                           ? AppColors.primary
                           : AppColors.grey1000,
                       radius: 18.r,

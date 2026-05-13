@@ -221,7 +221,7 @@ class _FeedbackViewState extends State<FeedbackView> {
                       TextView(
                         config: TextViewConfig(
                           text: model.name,
-                          fontSize: 16.sp,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -230,7 +230,7 @@ class _FeedbackViewState extends State<FeedbackView> {
                         child: TextView(
                           config: TextViewConfig(
                             text: formattedDate,
-                            fontSize: 14,
+                            fontSize: 12,
                             color: AppColors.grey1000,
                             fontWeight: FontWeight.w400,
                           ),

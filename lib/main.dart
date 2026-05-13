@@ -29,13 +29,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return OverlaySupport.global(
       child: ScreenUtilInit(
-        designSize: const Size(400, 852),
+        designSize: const Size(350, 852),
         rebuildFactor: RebuildFactors.change,
         builder: (_, _) => MaterialApp(
           title: 'Queen Plate Delivery',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(primarySwatch: Colors.blue),
-          initialRoute: SharedPreferencesService.instance.isLoggedIn == true
+          initialRoute: kIsWeb
+          ? Routes.loginView
+          : SharedPreferencesService.instance.isLoggedIn == true
               ? Routes.dashboardView
               : Routes.onboardingView,
           onGenerateRoute: StackedRouter().onGenerateRoute,
@@ -48,7 +50,7 @@ class MyApp extends StatelessWidget {
             final screenWidth = MediaQuery.of(context).size.width;
 
             // Show mobile app normally if screen is small (≤ 500px) or if running on real mobile
-            if (screenWidth <= 500 || !kIsWeb) {
+            if (screenWidth <= 600 || !kIsWeb) {
               return child ?? const SizedBox.shrink();
             }
 
@@ -60,5 +62,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-
