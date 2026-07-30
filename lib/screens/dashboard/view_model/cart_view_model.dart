@@ -50,7 +50,11 @@ class CartViewModel extends ProfileViewModel {
   int quantity = 1;
 
   // ====================== INCREASE QUANTITY ======================
-  Future<void> detailIncrease(String? cartItemId, String? mainFoodId) async {
+  Future<void> detailIncrease(
+    String? cartItemId,
+    String? mainFoodId,
+    BuildContext context,
+  ) async {
     final cartDetails = menuDetail?.data?.cartDetails;
 
     if (cartDetails != null && cartItemId != null && cartItemId.isNotEmpty) {
@@ -58,6 +62,7 @@ class CartViewModel extends ProfileViewModel {
       await updateFoodCartItem(
         UpdateQuantityModel(type: "increase"),
         cartItemId,
+        context,
       );
     } else {
       // Item not in cart → Increase local quantity
@@ -73,15 +78,23 @@ class CartViewModel extends ProfileViewModel {
   }
 
   // ====================== DECREASE QUANTITY ======================
-  Future<void> detailDecrease(String? cartItemId, String? mainFoodId) async {
+  Future<void> detailDecrease(
+    String? cartItemId,
+    String? mainFoodId,
+    BuildContext context,
+  ) async {
     final cartDetails = menuDetail?.data?.cartDetails;
 
     if (cartDetails != null && cartItemId != null && cartItemId.isNotEmpty) {
       // Item already in cart
-      final currentQty = int.tryParse(cartDetails.quantity ?? '0') ?? 0;
+      final currentQty = cartDetails.quantity ?? 0;
 
       if (currentQty > 1) {
-        await updateCartItem(UpdateQuantityModel(type: "decrease"), cartItemId);
+        await updateCartItem(
+          UpdateQuantityModel(type: "decrease"),
+          cartItemId,
+          context,
+        );
       } else if (currentQty == 1) {
         await deleteCartItem(cartItemId);
       }
@@ -173,21 +186,21 @@ class CartViewModel extends ProfileViewModel {
     notifyListeners();
   }
 
- void selectCategory(int? categoryId) {
-  selectedCategoryId = categoryId;
+  void selectCategory(int? categoryId) {
+    selectedCategoryId = categoryId;
 
-  if (categoryId == null) {
-    selectedCategoryName = "All Meals";
-  } else {
-    final category = menuList?.data?.categories.firstWhere(
-      (cat) => cat.id == categoryId,
-      orElse: () => throw Exception(), // safer
-    );
-    selectedCategoryName = category?.name ?? "Meals";
+    if (categoryId == null) {
+      selectedCategoryName = "All Meals";
+    } else {
+      final category = menuList?.data?.categories.firstWhere(
+        (cat) => cat.id == categoryId,
+        orElse: () => throw Exception(), // safer
+      );
+      selectedCategoryName = category?.name ?? "Meals";
+    }
+
+    notifyListeners();
   }
-
-  notifyListeners();
-}
 
   // Add this method
   void selectPaymentMethod(String method) {
@@ -466,7 +479,7 @@ class CartViewModel extends ProfileViewModel {
   }
 
   // === FIXED QUANTITY METHODS ===
-  Future<void> increaseQuantity(String itemId) async {
+  Future<void> increaseQuantity(String itemId, BuildContext context) async {
     final currentItem = _cartResModel?.data?.items.firstWhere(
       (item) => item.id.toString() == itemId,
       orElse: () => throw Exception(),
@@ -477,10 +490,14 @@ class CartViewModel extends ProfileViewModel {
     final newQuantity =
         (int.tryParse(currentItem.quantity.toString()) ?? 0) + 1;
 
-    await updateCartItem(UpdateQuantityModel(type: "increase"), itemId);
+    await updateCartItem(
+      UpdateQuantityModel(type: "increase"),
+      itemId,
+      context,
+    );
   }
 
-  Future<void> decreaseQuantity(String itemId) async {
+  Future<void> decreaseQuantity(String itemId, BuildContext context) async {
     final currentItem = _cartResModel?.data?.items.firstWhere(
       (item) => item.id.toString() == itemId,
       orElse: () => throw Exception(),
@@ -492,7 +509,11 @@ class CartViewModel extends ProfileViewModel {
 
     if (currentQty > 1) {
       final newQuantity = currentQty - 1;
-      await updateCartItem(UpdateQuantityModel(type: "decrease"), itemId);
+      await updateCartItem(
+        UpdateQuantityModel(type: "decrease"),
+        itemId,
+        context,
+      );
     } else {
       await deleteCartItem(itemId);
     }
@@ -580,6 +601,7 @@ class CartViewModel extends ProfileViewModel {
   Future<void> updateFoodCartItem(
     UpdateQuantityModel model,
     String itemId,
+    BuildContext context,
   ) async {
     try {
       _isLoad = true;
@@ -588,6 +610,10 @@ class CartViewModel extends ProfileViewModel {
         throwException: true,
       );
       _isLoad = false;
+      AppUiComponents.triggerNotification(
+        "Cart updated successfully",
+        error: false,
+      );
       notifyListeners();
     } catch (e) {
       _isLoad = false;
@@ -600,7 +626,11 @@ class CartViewModel extends ProfileViewModel {
 
   UpdateQuantityResModel? _updateQuantity;
   UpdateQuantityResModel? get updateQuantity => _updateQuantity;
-  Future<void> updateCartItem(UpdateQuantityModel model, String itemId) async {
+  Future<void> updateCartItem(
+    UpdateQuantityModel model,
+    String itemId,
+    BuildContext context,
+  ) async {
     try {
       _isLoad = true;
       _updateQuantity = await runBusyFuture(

@@ -11,7 +11,7 @@ class MenuListResModel {
   final String? message;
   final Data? data;
   final dynamic errors;
-  final num? status;
+  final int? status;
 
   factory MenuListResModel.fromJson(Map<String, dynamic> json) {
     return MenuListResModel(
@@ -22,14 +22,6 @@ class MenuListResModel {
       status: json["status"],
     );
   }
-
-  Map<String, dynamic> toJson() => {
-    "success": success,
-    "message": message,
-    "data": data?.toJson(),
-    "errors": errors,
-    "status": status,
-  };
 }
 
 class Data {
@@ -52,11 +44,6 @@ class Data {
             ),
     );
   }
-
-  Map<String, dynamic> toJson() => {
-    "categories": categories.map((x) => x.toJson()).toList(),
-    "featured_meals": featuredMeals.map((x) => x.toJson()).toList(),
-  };
 }
 
 class Category {
@@ -71,7 +58,7 @@ class Category {
 
   final int? id;
   final String? name;
-  final dynamic imagePublicId;
+  final String? imagePublicId;
   final String? image;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -86,15 +73,6 @@ class Category {
       updatedAt: DateTime.tryParse(json["updated_at"] ?? ""),
     );
   }
-
-  Map<String, dynamic> toJson() => {
-    "id": id,
-    "name": name,
-    "image_public_id": imagePublicId,
-    "image": image,
-    "created_at": createdAt?.toIso8601String(),
-    "updated_at": updatedAt?.toIso8601String(),
-  };
 }
 
 class FeaturedMeal {
@@ -112,13 +90,13 @@ class FeaturedMeal {
   });
 
   final int? id;
-  final String? categoryId;
+  final int? categoryId;
   final String? name;
   final String? description;
   final String? price;
   final String? image;
   final String? imagePublicId;
-  final String? isAvailable;
+  final int? isAvailable;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -136,17 +114,4 @@ class FeaturedMeal {
       updatedAt: DateTime.tryParse(json["updated_at"] ?? ""),
     );
   }
-
-  Map<String, dynamic> toJson() => {
-    "id": id,
-    "category_id": categoryId,
-    "name": name,
-    "description": description,
-    "price": price,
-    "image": image,
-    "image_public_id": imagePublicId,
-    "is_available": isAvailable,
-    "created_at": createdAt?.toIso8601String(),
-    "updated_at": updatedAt?.toIso8601String(),
-  };
 }

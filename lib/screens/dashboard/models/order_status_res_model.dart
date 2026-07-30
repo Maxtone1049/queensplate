@@ -53,7 +53,7 @@ class Data {
   });
 
   final int? id;
-  final String? userId;
+  final num? userId;
   final String? orderNumber;
   final String? subtotal;
   final String? deliveryFee;
@@ -125,9 +125,9 @@ class Item {
   });
 
   final int? id;
-  final String? orderId;
-  final String? foodItemId;
-  final String? quantity;
+  final num? orderId;
+  final num? foodItemId;
+  final num? quantity;
   final String? price;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -175,13 +175,13 @@ class FoodItem {
   });
 
   final int? id;
-  final String? categoryId;
+  final num? categoryId;
   final String? name;
   final String? description;
   final String? price;
   final String? image;
   final String? imagePublicId;
-  final String? isAvailable;
+  final num? isAvailable;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 

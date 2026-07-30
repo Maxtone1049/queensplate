@@ -1,6 +1,8 @@
 import 'package:queen_plate_delivery/common/appmanager/shared_preferences.dart';
 import 'package:queen_plate_delivery/core/main_core/app.locator.dart';
 import 'package:queen_plate_delivery/screens/auth/auth_api/auth_api.dart';
+import 'package:queen_plate_delivery/screens/auth/model/email_otp_model.dart';
+import 'package:queen_plate_delivery/screens/auth/model/email_verify_res_model.dart';
 import 'package:queen_plate_delivery/screens/auth/model/forget_password_model.dart';
 import 'package:queen_plate_delivery/screens/auth/model/forget_password_res_model.dart';
 import 'package:queen_plate_delivery/screens/auth/model/get_user_res_model.dart';
@@ -8,6 +10,7 @@ import 'package:queen_plate_delivery/screens/auth/model/login_user_model.dart';
 import 'package:queen_plate_delivery/screens/auth/model/login_user_res_model.dart';
 import 'package:queen_plate_delivery/screens/auth/model/register_user_model.dart';
 import 'package:queen_plate_delivery/screens/auth/model/register_user_res_model.dart';
+import 'package:queen_plate_delivery/screens/auth/model/resend_verification_res_model.dart';
 import 'package:queen_plate_delivery/screens/auth/model/reset_password_model.dart';
 import 'package:queen_plate_delivery/screens/auth/model/reset_password_res_model.dart';
 import 'package:queen_plate_delivery/screens/auth/model/verify_otp_model.dart';
@@ -44,4 +47,12 @@ class AuthRepoImpl extends AuthRepo {
   @override
   Future<VerifyOtpResModel> verifyOtp(VerifyOtpModel model) async =>
       await authApi.verifyOtp(model);
+
+  @override
+  Future<EmailVerifyResModel> emailverifyOtp(VerifyOtpModel model) async =>
+      await authApi.emailverify(model);
+
+  @override
+  Future<ResendVerificationResModel> resendOTP(EmailOtpModel model) async =>
+      await authApi.resendOtp(model);
 }

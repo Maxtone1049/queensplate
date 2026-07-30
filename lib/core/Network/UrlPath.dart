@@ -5,9 +5,9 @@ class UrlConfig {
   static const String login = 'auth/login';
   static const String forget = 'auth/forgot-password';
   static const String reset = 'auth/reset-password';
-  static const String verifyEmail = 'auth/verify-email';
   static const String resendOtp = 'auth/resend-verification';
   static const String veriyOtp = 'auth/verify-otp';
+  static const String emailverify = 'auth/verify-email';
   static const String menu = 'menu';
   static const String addtoCart = 'cart/add';
   static const String cart = 'cart';

@@ -4,6 +4,7 @@ import 'package:queen_plate_delivery/screens/auth/auth_api/auth_api.dart';
 import 'package:queen_plate_delivery/screens/auth/repository/auth_repo_impl.dart';
 import 'package:queen_plate_delivery/screens/auth/view_model/auth_view_model.dart';
 import 'package:queen_plate_delivery/screens/auth/views/change_password_view.dart';
+import 'package:queen_plate_delivery/screens/auth/views/email_verify_otp.dart';
 import 'package:queen_plate_delivery/screens/auth/views/forget_password_view.dart';
 import 'package:queen_plate_delivery/screens/auth/views/login_view.dart';
 import 'package:queen_plate_delivery/screens/auth/views/onboarding_view.dart';
@@ -39,6 +40,7 @@ import 'package:stacked_services/stacked_services.dart';
     ),
     CupertinoRoute(page: RegisterView),
     CupertinoRoute(page: LoginView),
+    CupertinoRoute(page: EmailVerifyOtp),
     CupertinoRoute(page: ForgetPasswordView),
     CupertinoRoute(page: OtpView),
     CupertinoRoute(page: DashboardView),

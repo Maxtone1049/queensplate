@@ -49,7 +49,7 @@ class Data {
   final String? price;
   final String? description;
   final String? image;
-  final String? categoryId;
+  final num? categoryId;
   final CartDetails? cartDetails; // Can be null when API returns []
   final Category? category;
 
@@ -96,8 +96,8 @@ class CartDetails {
   });
 
   final int? id;
-  final String? quantity;
-  final String? foodItemId;
+  final num? quantity;
+  final num? foodItemId;
 
   factory CartDetails.fromJson(Map<String, dynamic> json) {
     return CartDetails(

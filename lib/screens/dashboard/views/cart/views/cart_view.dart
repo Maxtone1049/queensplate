@@ -162,10 +162,14 @@ class CartView extends StatelessWidget {
                             price: cart.foodItem!.price.toString(),
                             quantity: cart.quantity.toString(),
                             totalPrice: cart.totalPrice.toString(),
-                            increase: () =>
-                                model.increaseQuantity(cart.id.toString()),
-                            decrease: () =>
-                                model.decreaseQuantity(cart.id.toString()),
+                            increase: () => model.increaseQuantity(
+                              cart.id.toString(),
+                              context,
+                            ),
+                            decrease: () => model.decreaseQuantity(
+                              cart.id.toString(),
+                              context,
+                            ),
                             delete: () {
                               showDialog(
                                 context: context,

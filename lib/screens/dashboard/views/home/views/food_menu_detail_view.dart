@@ -49,10 +49,10 @@ class FoodMenuDetailView extends StatelessWidget {
         });
       },
       builder: (context, model, child) {
-        String _getCurrentQuantity(CartViewModel model) {
+        String getCurrentQuantity(CartViewModel model) {
           final cartQty = model.menuDetail?.data?.cartDetails?.quantity;
-          if (cartQty != null && cartQty.isNotEmpty) {
-            return cartQty;
+          if (cartQty != null && cartQty != 0) {
+            return cartQty.toString();
           }
           return model.quantity.toString();
         }
@@ -249,6 +249,7 @@ class FoodMenuDetailView extends StatelessWidget {
                                               model.detailDecrease(
                                                 cartItemId,
                                                 foodId,
+                                                context,
                                               );
                                             },
                                           ),
@@ -258,7 +259,7 @@ class FoodMenuDetailView extends StatelessWidget {
                                             alignment: Alignment.center,
                                             child: TextView(
                                               config: TextViewConfig(
-                                                text: _getCurrentQuantity(
+                                                text: getCurrentQuantity(
                                                   model,
                                                 ), // Use helper
                                                 fontSize: 18,
@@ -286,6 +287,7 @@ class FoodMenuDetailView extends StatelessWidget {
                                               model.detailIncrease(
                                                 cartItemId,
                                                 foodId,
+                                                context,
                                               );
                                             },
                                           ),

@@ -36,8 +36,8 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: ThemeData(primarySwatch: Colors.blue),
           initialRoute: kIsWeb
-          ? Routes.loginView
-          : SharedPreferencesService.instance.isLoggedIn == true
+              ? Routes.loginView
+              : SharedPreferencesService.instance.isLoggedIn == true
               ? Routes.dashboardView
               : Routes.onboardingView,
           onGenerateRoute: StackedRouter().onGenerateRoute,

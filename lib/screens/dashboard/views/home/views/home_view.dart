@@ -277,6 +277,7 @@ class HomeView extends StatelessWidget {
                                         foodId: isJollof.id.toString(),
                                       ),
                                     );
+                                    model.updateSearchQuery('');
                                   },
                                 );
                               },

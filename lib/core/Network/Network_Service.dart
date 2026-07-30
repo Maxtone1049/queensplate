@@ -164,7 +164,8 @@ class NetworkService {
       return response;
     } catch (error, stackTrace) {
       var apiError = ApiError.fromDio(error);
-      if (apiError.errorDescription!.contains('Unauthorized')) {
+      if (apiError.errorType == 401
+      ) {
         // Trigger logout only once
         if (!_hasLoggedOut) {
           _hasLoggedOut = true; // Set flag to true to ensure only one logout

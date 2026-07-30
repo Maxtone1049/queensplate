@@ -69,14 +69,14 @@ class AddressModel {
     required this.updatedAt,
   });
 
-  final int? id;
-  final String? userId;
+  final num? id;
+  final num? userId;
   final String? streetAddress;
   final String? apartmentSuite;
   final String? country;
   final String? state;
   final String? phoneNumber;
-  final String? isDefault;
+  final num? isDefault;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -120,7 +120,7 @@ class User {
     required this.updatedAt,
   });
 
-  final int? id;
+  final num? id;
   final String? name;
   final String? email;
   final dynamic phoneNumber;

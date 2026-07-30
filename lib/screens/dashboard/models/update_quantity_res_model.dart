@@ -45,9 +45,9 @@ class Data {
   });
 
   final int? id;
-  final String? userId;
-  final String? foodItemId;
-  final String? quantity;
+  final num? userId;
+  final num? foodItemId;
+  final num? quantity;
   final String? unitPrice;
   final num? totalPrice;
   final DateTime? createdAt;
